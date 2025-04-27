@@ -4,6 +4,7 @@ from pocketflow import Node, BatchNode
 from utils.crawl_github_files import crawl_github_files
 from utils.call_llm import call_llm
 from utils.crawl_local_files import crawl_local_files
+from utils import git
 
 # Helper to get content for specific file indices
 def get_content_for_indices(files_data, indices):
@@ -659,7 +660,19 @@ class CombineTutorial(Node):
         index_content = f"# Tutorial: {project_name}\n\n"
         index_content += f"{relationships_data['summary']}\n\n" # Use the potentially translated summary directly
         # Keep fixed strings in English
-        index_content += f"**Source Repository:** [{repo_url}]({repo_url})\n\n"
+        # repo_url is None if we gave a local directory
+        local_path = False
+        if not repo_url and shared["local_dir"]:
+            local_path = shared["local_dir"]
+            repo_url = git.get_upstream_url(shared["local_dir"])
+        if repo_url:  # maybe the local path wasn't under git
+            index_content += f"**Source Repository:** [{repo_url}]({repo_url})\n\n"
+
+        if local_path and repo_url:  # ...
+            index_content += f"**Commit Hash:** {git.get_commit_hash(local_path)}\n\n"
+            index_content += f"**Branch Name:** {git.get_branch_name(local_path)}\n\n"
+            if tag_name := git.get_tag_name(local_path):
+                index_content += f"**Tag Name:** {tag_name}\n\n"
 
         # Add Mermaid diagram for relationships (diagram itself uses potentially translated names/labels)
         index_content += "```mermaid\n"
